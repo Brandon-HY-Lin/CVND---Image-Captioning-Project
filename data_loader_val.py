@@ -54,7 +54,7 @@ def get_loader_valid(transform,
     if mode == 'valid':
         assert batch_size == 1, 'Plaease change batch_size to 1 if validing your model.'
         img_folder = os.path.join(cocoapi_loc, 'cocoapi/images/val2014/')
-        annotations_file = os.path.join(cocoapi_loc, 'coco/annotations/captions_val2014.json')
+        annotations_file = os.path.join(cocoapi_loc, 'cocoapi/annotations/captions_val2014.json')
 
     # COCO caption dataset.
     dataset = CoCoDatasetVal(transform=transform,
