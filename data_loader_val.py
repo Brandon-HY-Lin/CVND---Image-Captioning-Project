@@ -37,7 +37,7 @@ def get_loader_valid(transform,
       cocoapi_loc: The location of the folder containing the COCO API: https://github.com/cocodataset/cocoapi
     """
     
-    assert mode in ['train', 'test'], "mode must be one of 'train' or 'test'."
+    assert mode in ['train', 'test', 'valid'], "mode must be one of 'train', 'test', 'valid'."
     if vocab_from_file==False: assert mode=='train', "To generate vocab from captions file, must be in training mode (mode='train')."
 
     # Based on mode (train, val, test), obtain img_folder and annotations_file.
@@ -51,13 +51,13 @@ def get_loader_valid(transform,
         assert vocab_from_file==True, "Change vocab_from_file to True."
         img_folder = os.path.join(cocoapi_loc, 'cocoapi/images/test2014/')
         annotations_file = os.path.join(cocoapi_loc, 'cocoapi/annotations/image_info_test2014.json')
-    if mode == 'valid:
+    if mode == 'valid':
         assert batch_size == 1, 'Plaease change batch_size to 1 if validing your model.'
         img_folder = os.path.join(cocoapi_loc, 'cocoapi/images/val2014/')
         annotations_file = os.path.join(cocoapi_loc, 'coco/annotations/captions_val2014.json')
 
     # COCO caption dataset.
-    dataset = CoCoDataset(transform=transform,
+    dataset = CoCoDatasetVal(transform=transform,
                           mode=mode,
                           batch_size=batch_size,
                           vocab_threshold=vocab_threshold,
@@ -165,13 +165,14 @@ class CoCoDatasetVal(data.Dataset):
             # return original image and pre-processed image tensor
             return orig_image, image
 
-'''
+        
     def get_train_indices(self):
         sel_length = np.random.choice(self.caption_lengths)
         all_indices = np.where([self.caption_lengths[i] == sel_length for i in np.arange(len(self.caption_lengths))])[0]
         indices = list(np.random.choice(all_indices, size=self.batch_size))
         return indices
-'''
+
+
     def __len__(self):
         if self.mode == 'train':
             return len(self.ids)
