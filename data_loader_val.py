@@ -84,7 +84,7 @@ def get_loader(transform,
 
     return data_loader
 
-class CoCoDataset(data.Dataset):
+class CoCoDatasetVal(data.Dataset):
     
     def __init__(self, transform, mode, batch_size, vocab_threshold, vocab_file, start_word, 
         end_word, unk_word, annotations_file, vocab_from_file, img_folder):
@@ -100,6 +100,9 @@ class CoCoDataset(data.Dataset):
             print('Obtaining caption lengths...')
             all_tokens = [nltk.tokenize.word_tokenize(str(self.coco.anns[self.ids[index]]['caption']).lower()) for index in tqdm(np.arange(len(self.ids)))]
             self.caption_lengths = [len(token) for token in all_tokens]
+        elif self.mode == 'valid':
+            self.coco = COCO(annotations_file)
+            self.imgIds = list(self.coco.imgs.keys())
         else:
             test_info = json.loads(open(annotations_file).read())
             self.paths = [item['file_name'] for item in test_info['images']]
@@ -127,6 +130,18 @@ class CoCoDataset(data.Dataset):
             # return pre-processed image and caption tensors
             return image, caption
 
+        # obtain image and image index (imgId)
+        elif self.mode == 'valid':
+            imgId = self.imgIds[index]
+            imgClass = self.coco.loadImgs(imgId)[0]
+            path = imgClass['file_name']
+            
+            image = Image.open(os.path.join(self.img_folder, path)).convert('RGB')
+            image = self.transform(image)
+            
+            # return pre-processed image and image index
+            return image, imgId
+        
         # obtain image if in test mode
         else:
             path = self.paths[index]
@@ -139,14 +154,18 @@ class CoCoDataset(data.Dataset):
             # return original image and pre-processed image tensor
             return orig_image, image
 
+'''
     def get_train_indices(self):
         sel_length = np.random.choice(self.caption_lengths)
         all_indices = np.where([self.caption_lengths[i] == sel_length for i in np.arange(len(self.caption_lengths))])[0]
         indices = list(np.random.choice(all_indices, size=self.batch_size))
         return indices
-
+'''
     def __len__(self):
         if self.mode == 'train':
             return len(self.ids)
+        elif self.mode == 'valid':
+            # return numbers of images
+            return len(self.imgIds)
         else:
             return len(self.paths)
