@@ -10,8 +10,8 @@ from tqdm import tqdm
 import random
 import json
 
-def get_loader(transform,
-               mode='train',
+def get_loader_valid(transform,
+               mode='valid',
                batch_size=1,
                vocab_threshold=None,
                vocab_file='./vocab.pkl',
@@ -51,6 +51,10 @@ def get_loader(transform,
         assert vocab_from_file==True, "Change vocab_from_file to True."
         img_folder = os.path.join(cocoapi_loc, 'cocoapi/images/test2014/')
         annotations_file = os.path.join(cocoapi_loc, 'cocoapi/annotations/image_info_test2014.json')
+    if mode == 'valid:
+        assert batch_size == 1, 'Plaease change batch_size to 1 if validing your model.'
+        img_folder = os.path.join(cocoapi_loc, 'cocoapi/images/val2014/')
+        annotations_file = os.path.join(cocoapi_loc, 'coco/annotations/captions_val2014.json')
 
     # COCO caption dataset.
     dataset = CoCoDataset(transform=transform,
@@ -76,6 +80,13 @@ def get_loader(transform,
                                       batch_sampler=data.sampler.BatchSampler(sampler=initial_sampler,
                                                                               batch_size=dataset.batch_size,
                                                                               drop_last=False))
+        
+    elif mode == 'valid':
+        data_loader = data.DataLoader(dataset=dataset,
+                                      batch_size=dataset.batch_size,
+                                      shuffle=False,
+                                      num_workers=num_workers)
+        
     else:
         data_loader = data.DataLoader(dataset=dataset,
                                       batch_size=dataset.batch_size,
