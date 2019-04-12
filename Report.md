@@ -24,6 +24,7 @@ Before diving into the algorithm, let's look more closly on the dateset, the Mic
 The figure and its captions as shown below are a sample of MS COCO.
 
 * Sample Image
+
 ![Sample image of MS COCO dataset][dataset_sample_image]
 
 * Captions
