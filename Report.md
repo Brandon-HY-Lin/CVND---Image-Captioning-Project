@@ -1,9 +1,18 @@
 [dataset]: https://raw.githubusercontent.com/Brandon-HY-Lin/CVND---Image-Captioning-Project/985e1b624ffa27007b01ebec9f544701046d06a6/images/coco-examples.jpg "CoCo 2014"
 
+[dataset_sample_image]: https://github.com/Brandon-HY-Lin/CVND---Image-Captioning-Project/blob/master/images/dataset_sample_1.png "dateset_sample_image"
+
 [image_caption_paper]: https://arxiv.org/pdf/1411.4555.pdf "Paper- Show and Tell: A Neural Image Caption Generator"
 
+[diagram_cnn_rnn_model]: https://raw.githubusercontent.com/Brandon-HY-Lin/CVND---Image-Captioning-Project/985e1b624ffa27007b01ebec9f544701046d06a6/images/encoder-decoder.png "Diagram of CNN-RNN model"
+
+[diagram_cnn_encoder]: https://raw.githubusercontent.com/Brandon-HY-Lin/CVND---Image-Captioning-Project/985e1b624ffa27007b01ebec9f544701046d06a6/images/encoder.png "Diagram of encoder"
+
+[diagram_rnn_decoder]: https://raw.githubusercontent.com/Brandon-HY-Lin/CVND---Image-Captioning-Project/985e1b624ffa27007b01ebec9f544701046d06a6/images/decoder.png "Diagram of decoder"
+
+
 # Abstract
-This work adopts methods in [Vinyals's work][image_caption_paper]. The architecture combines CNN and RNN to train [CoCo 2014 dataset](http://cocodataset.org/#download). Due to computation power, only 3 epochs are executed and achieves a training loss of 1.8. The BLEU-4 score of validation dataset is 0.517.
+This work adopts methods in [Vinyals's work][image_caption_paper], which utilizes CNN-RNN model to train [CoCo 2014 dataset](http://cocodataset.org/#download). Due to computation power, only 3 epochs are executed and achieves a training loss of 1.93. The BLEU-4 score of validation dataset is 0.517.
 
 
 # Introduction
@@ -14,77 +23,67 @@ Before diving into the algorithm, let's look more closly on the dateset, the Mic
 
 The figure and its captions as shown below are a sample of MS COCO.
 
+* Sample Image
+![Sample image of MS COCO dataset][dataset_sample_image]
+
+* Captions
+    * A living room is decorated with floral print.
+    * A living room filled with chairs, a fireplace, and television. 
+    * A living area has heavily patterned walls, furniture, and rug.
+    * A living room with chairs, a piano, and a fireplace.
+    * A living room with floral patterned walls and chairs.
 
 
-A living room is decorated with floral print.
-A living room filled with chairs, a fireplace, and television. 
-A living area has heavily patterned walls, furniture, and rug.
-A living room with chairs, a piano, and a fireplace.
-A living room with floral patterned walls and chairs.
+# CNN-RNN Model
+The CNN-RNN model is a encoder-decoder architecture. First, let's talk about CNN part which is served as encoder and extractes features. The diagram of encoder is shown below.
+
+![Diagram of encoder][diagram_cnn_encoder]
+
+_Diagram of CNN part (encoder)_
 
 
+The RNN part is served as decoder, which is a language model and generates word-level tokens. 
+
+![Diagram of decoder][diagram_rnn_decoder]
+
+_Diagram of RNN part (decoder)_
 
 
+After introducing both CNN and RNN part, let's put them together. The diagram of CNN-RNN model is shown below.
 
-The first step is __feature extraction__. The output of 1st step could be [MFCC](https://en.wikipedia.org/wiki/Mel-frequency_cepstrum) or [spectrogram](https://en.wikipedia.org/wiki/Spectrogram). The second step is __acoustic model__ is to fullfill phonetic representation which could be CNN or RNN. The 3rd step is __decoder__ which is to fullfill language model. It could be fully-connected layer or RNN. In this work, [deep sppech 2][deep_speech_2] is implemented and its result is compared with other methods.
+![Diagram of CNN-RNN model][diagram_cnn_rnn_model]
 
-In this project, the input is spectrogram with size of 161. The output size is 29 which includes 26 characters, space character (" "), an apostrophe ('), and an empty "character" used to pad training examples within batches containing uneven lengths.
-
-
-# Deep Speech 2
-The flow chart of [deep speech 2][deep_speech_2] is shown below. The input is spectrogram and then fed into 2-layer 2d-CNN. The result is passed into 1-layer RNN and 1 fully-connected layer. Each output of layer has batch-norm except final output.
-
-
-![Flow chart of deep speech 2][flow_deep_speech_2] 
-
-*Flow chart of __deep speech 2__*
+_Diagram of CNN RNN model_
 
 
 # Implementation
+I use a pretrained ResNet50 and remove FC layer in the last layer. The reason why I choose pretrained ResNet50 is that the size of training dataset is 82,783, which is small. Beside RestNet50, other parameters are trainable. Then the ouput of this CNN is feed into the RNN. In the paper Vinyals et al., 2015, authors found that feeding the encoded features into every time step makes it overfit easily. As a result, I only feed image as first time step. The dimensions of embeddeding and hidden are both 512, which is adopted from the Vinyals' work. However, I do not add dropout layer because I only train few epochs and it's most likely underfitting than overfitting.
 
-* Architecture:
-The architecture is (1-layer Conv2D + 2-layer Bidirectional GRU + TimeDistributed Dense). To reducing overfitting, batch-normalization and dropout layers are added between each layer. Futhurmore, the dropout feature in GRU cell is also enabled.
+To fit image into pretrained ResNet50, 2 tranformers are used to resize the images to (255x255) and then random crop resized images into (224x224). The random cropping generates more images and MIGHT increase the accuracy which is a plus. The code snippet is shown below:
+```
+transforms.Compose([ 
+                    transforms.Resize(256),                          # smaller edge of image resized to 256
+                    transforms.RandomCrop(224),                      # get 224x224 crop from random location
+                    transforms.RandomHorizontalFlip(),               # horizontally flip image with probability=0.5
+                    transforms.ToTensor(),                           # convert the PIL Image to a tensor,
+                    ...,
+                    ])
+```
 
-* Steps:
-    * Input: The spectrogram with shape (None, TimeSeqLength, 161, 1).
-    * Conv2D: Served as encoder to extract features.
-            Stride=2, Out-channel=8, padding=same
-            output shape = (None, TimeSeqLength/2, 81, 8)
-    * BatchNorm: Speed-up traininig at first few epochs.
-    * Dropout: Reduce strong overfitting caused by Conv2D.
-    * Lambda: reshape the 4-dim data to 3-dim data in order to fit into GRU layer.
-            output shape = (None, TimeSeqLength/2, 81 * 8)
-    * Bidirectional GRU with dropout (layer-0) : served as decoder.
-            output shape = (None, TimeSeqLength/2, 512)
-    * BatchNorm: Speed-up training
-    * Dropout: Reduce overfitting of 2-layer GRU
-    * Bidirectional GRU with dropout (layer-1) : served as decoder.
-            output shape = (None, TimeSeqLength/2, 512)
-    * BatchNorm: Speed-up training
-    * Dropout: Reduce overfitting of 2-layer GRU
-    * TimeDistributed Dense: convert time series to characters.
-            output shape = (None, TimeSeqLength/2, 29)
+After getting image from the previous 2 transformer, the cropped images are normalized. as shown below.
+```
+    transforms.Normalize((0.485, 0.456, 0.406),      # normalize image for pre-trained model
+                        (0.229, 0.224, 0.225))
+```
+The magic number in the Noralization() is the sampled mean and standard deviation in the ImageNet. Note that, the ResNet adopted the batch normalization in order to alleviate internal covariance shift. Since the pretrained model has adapted to the pixel intensity in ImageNet, it's better to normalize CoCo-images first.
 
 
 # Results
-
-The model name of __deep speech 2__ is _model_cnn2d_dropout_, and the validation loss is 93.7 which is better than other combinations of CNN, RNN, and FC. The detail results are shown below.
-
-
-| Model               	| Architecture                                	| Training loss @ Epoch-20 	| Validation Loss @ Epoch-20 	| Lowest Validation Loss 	| Epoch of lowest Valid Loss 	|
-|---------------------	|---------------------------------------------	|--------------------------	|----------------------------	|------------------------	|----------------------------	|
-| model_0             	| RNN                                         	| 778.4                    	| 752.1                      	| 752.2                  	| 20                         	|
-| model_1             	| RNN + Dense                                 	| 119.1                    	| 137.3                      	| 137.3                  	| 18                         	|
-| model_2             	| CNN-1D + RNN + Dense                        	| 73.4                     	| 149.8                      	| 134.5                  	| 8                          	|
-| model_3             	| 3-layer RNN + Dense                         	| 93.1                     	| 134.5                      	| 132.7                  	| 16                         	|
-| model_4             	| Bidirectional RNN + Dense                   	| 102.1                    	| 135.7                      	| 134.3                  	| 17                         	|
-| model_cnn2d         	| CNN-2D + RNN + Dense                        	| 76.7                     	| 140.7                      	| 128.3                  	| 9                          	|
-| model_deep_cnn2d    	| 2-layer CNN-2D + RNN + Dense                	| 66.5                     	| 191.9                      	| 151.1                  	| 6                          	|
-| model_cnn2d_dropout 	| CNN2D + 2-layer Bidirectional GRU + Dropout 	| 75.7                     	| 93.7                       	| 93.7                   	| 20                         	|
+The number of test images is 40,504. The training time for 3 epochs is 8 hours. The training loss is 1.93 and BLEU-4 of testing dataset is 0.517.
 
 
 # Conclusion
-In this work, the similar architecture in [deep sppech 2][deep_speech_2] is implemented and achieve validation loss of 93.7 which is much better compared to other combinations of RNN and CNN.
+In this work, CNN-RNN model is implemented and it achieves BLEU-4 score of 0.517.
 
 
 # Future Works
@@ -94,21 +93,21 @@ Visualize attention by implementing [Xu's work](https://arxiv.org/pdf/1502.03044
 # Appendix
 #### Hyper-Parameters
 
-* model_cnn2d_dropout
+* Encoder
 	* CNN
+		* pretrained ResNet50 provided by pytorch
+            * input size: (224, 224, 3)
+        * Linear:
+            * output size: 256
+* Decoder
+    * Embedding:
+        * input size: 9955    (vocabulary size)
+        * output size: 512
+	* LSTM
 		* #layer: 1
-	    * #input width: 161
-	    * #input channel: 1
-	    * #output channel: 8
-	    * kernel size: 11
-	    * stride: 2
-	    * padding: same
-	    * dropout: 0.2
-	* Bidirectional GRU
-		* #layer: 2
-	    * unit of neurons: 256
-	    * dropout: 0.2
+        * input size: 512
+	    * hidden size: 512
 	* Fully-connected layer
 		* layer: 1
-		* input size: 256
-		* output size: 29
+		* input size: 512
+		* output size: 9955   (vocabulary size)
