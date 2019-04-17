@@ -10,6 +10,7 @@
 
 [diagram_rnn_decoder]: https://raw.githubusercontent.com/Brandon-HY-Lin/CVND---Image-Captioning-Project/985e1b624ffa27007b01ebec9f544701046d06a6/images/decoder.png "Diagram of decoder"
 
+# Project: Image Captioning
 
 # Abstract
 This work adopts methods in [Vinyals's work][image_caption_paper], which utilizes CNN-RNN model to train [CoCo 2014 dataset](http://cocodataset.org/#download). Due to computation power, only 3 epochs are executed and achieves a training loss of 1.93. The BLEU-4 score of validation dataset is 0.517.
