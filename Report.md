@@ -59,6 +59,11 @@ _Diagram of CNN RNN model_
 
 
 # Implementation
+### Pre-processing:
+Captions of COCO dataset are normalized then tokenized. Stopwords are all preserved.
+
+
+### Training:
 I use a pretrained ResNet50 and remove FC layer in the last layer. The reason why I choose pretrained ResNet50 is that the size of training dataset is 82,783, which is small. Beside RestNet50, other parameters are trainable. Then the ouput of this CNN is feed into the RNN. In the paper Vinyals et al., 2015, authors found that feeding the encoded features into every time step makes it overfit easily. As a result, I only feed image as first time step. The dimensions of embeddeding and hidden are both 512, which is adopted from the Vinyals' work. However, I do not add dropout layer because I only train few epochs and it's most likely underfitting than overfitting.
 
 To fit image into pretrained ResNet50, 2 tranformers are used to resize the images to (255x255) and then random crop resized images into (224x224). The random cropping generates more images and MIGHT increase the accuracy which is a plus. The code snippet is shown below:
